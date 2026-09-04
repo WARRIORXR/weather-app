@@ -60,4 +60,4 @@ export const WIND_DIRECTIONS = [
   'S','SSW','SW','WSW','W','WNW','NW','NNW','N'
 ];
 
-export const DEFAULT_API_KEY = ''; // User must provide their own
+export const DEFAULT_API_KEY = 'REDACTED_API_KEY';
