@@ -1,11 +1,9 @@
-/**
- * WeatherState - Global state manager backed by localStorage
- */
+import { DEFAULT_API_KEY } from '../utils/constants.js';
 
 const STORAGE_KEY = 'weather_app_state';
 
 const defaults = {
-  apiKey: '5c3c7c58b6dc8324e7b441340225ac01',
+  apiKey: DEFAULT_API_KEY,
   unit: 'celsius',          // celsius | fahrenheit
   windUnit: 'kmh',          // kmh | mph | ms
   pressureUnit: 'hpa',      // hpa | inhg
@@ -20,7 +18,7 @@ const defaults = {
   severeWarnings: true,
   autoLocation: true,
   saveHistory: true,
-  lastCity: null,
+  lastCity: 'London',
   lastWeather: null,
 };
 
@@ -32,12 +30,23 @@ try {
   state = { ...defaults, ...saved };
 } catch { /* ignore */ }
 
+// Ensure valid apiKey and lastCity
+if (!state.apiKey || typeof state.apiKey !== 'string' || !state.apiKey.trim()) {
+  state.apiKey = defaults.apiKey;
+}
+if (!state.lastCity) {
+  state.lastCity = defaults.lastCity;
+}
+
 const listeners = new Set();
 
 const WeatherState = {
   get(key) { return key ? state[key] : { ...state }; },
 
   set(updates) {
+    if (updates.apiKey !== undefined && (!updates.apiKey || typeof updates.apiKey !== 'string' || !updates.apiKey.trim())) {
+      updates.apiKey = defaults.apiKey;
+    }
     state = { ...state, ...updates };
     this._save();
     listeners.forEach(fn => fn(state));

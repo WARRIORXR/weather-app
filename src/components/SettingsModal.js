@@ -1,4 +1,5 @@
 import WeatherState from '../context/WeatherState.js';
+import { DEFAULT_API_KEY } from '../utils/constants.js';
 
 const COLOR_SCHEMES = [
   { label: 'Ocean Blue', start: '#1E3A8A', end: '#3730A3' },
@@ -15,6 +16,7 @@ export default class SettingsModal {
     this.onClose = onClose;
     this.onSave = onSave;
     this.tempSettings = {};
+    this._escHandler = null;
   }
 
   open() {
@@ -31,6 +33,10 @@ export default class SettingsModal {
   close() {
     this.overlay.classList.add('hidden');
     document.body.style.overflow = '';
+    if (this._escHandler) {
+      document.removeEventListener('keydown', this._escHandler);
+      this._escHandler = null;
+    }
     this.onClose();
   }
 
@@ -223,7 +229,8 @@ export default class SettingsModal {
     // Save
     this.contentEl.querySelector('#settings-save')?.addEventListener('click', () => {
       // Gather all values
-      const apiKey = this.contentEl.querySelector('#api-key-input')?.value.trim() || '';
+      const apiKeyInput = this.contentEl.querySelector('#api-key-input')?.value.trim();
+      const apiKey = apiKeyInput || DEFAULT_API_KEY;
       const animationsEnabled = this.contentEl.querySelector('#toggle-animations')?.checked ?? true;
       const particlesEnabled = this.contentEl.querySelector('#toggle-particles')?.checked ?? true;
       const autoLocation = this.contentEl.querySelector('#toggle-autoloc')?.checked ?? true;

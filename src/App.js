@@ -181,7 +181,7 @@ export default class App {
     this.components.current.render(current);
     this.components.forecast.render(parseForecastToDays(forecast), tz);
     this.components.hourly.render(parseHourly(forecast), tz);
-    if (aqiData) this.components.details.render(current, aqiData);
+    this.components.details.render(current, aqiData);
 
     // Update saved locations UI
     this.components.saved.update();
@@ -303,12 +303,9 @@ export default class App {
   }
 
   _restoreLastCity() {
-    const city = WeatherState.get('lastCity');
-    const apiKey = WeatherState.get('apiKey');
-    if (city && apiKey) {
-      this.components.search.setValue(city);
-      this._loadWeather(city);
-    }
+    const city = WeatherState.get('lastCity') || 'London';
+    this.components.search.setValue(city);
+    this._loadWeather(city);
   }
 
   _showLoading() {
@@ -339,11 +336,17 @@ export default class App {
   }
 
   _showError(err) {
-    const msg = err.message === 'NO_API_KEY'
-      ? 'Please add your OpenWeatherMap API key in Settings (⚙️).'
-      : err.response?.status === 404
-        ? 'City not found. Please check the spelling and try again.'
-        : 'Connection error. Please check your internet connection.';
+    console.error('Weather load error:', err);
+    let msg = 'Connection error. Please check your internet connection.';
+    if (err.message === 'NO_API_KEY') {
+      msg = 'Please add your OpenWeatherMap API key in Settings (⚙️).';
+    } else if (err.response?.status === 404) {
+      msg = 'City not found. Please check the spelling and try again.';
+    } else if (err.response?.status === 401) {
+      msg = 'Invalid API key. Please check your OpenWeatherMap API key in Settings (⚙️).';
+    } else if (err.message && err.message !== 'Network Error') {
+      msg = `Error: ${err.message}`;
+    }
 
     this.els.emptyState.classList.remove('hidden');
     this.els.emptyState.innerHTML = `
@@ -360,7 +363,7 @@ export default class App {
     `;
 
     this.els.emptyState.querySelector('#retry-btn')?.addEventListener('click', () => {
-      const city = WeatherState.get('lastCity');
+      const city = WeatherState.get('lastCity') || 'London';
       if (city) this._loadWeather(city);
     });
     this.els.emptyState.querySelector('#open-settings-btn')?.addEventListener('click', () => {
