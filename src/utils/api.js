@@ -1,9 +1,9 @@
 import axios from 'axios';
-import { API_BASE, GEO_BASE } from './constants.js';
+import { API_BASE, GEO_BASE, DEFAULT_API_KEY } from './constants.js';
 import WeatherState from '../context/WeatherState.js';
 
 function getKey() {
-  const key = WeatherState.get('apiKey') || import.meta.env.VITE_OWM_KEY || '';
+  const key = WeatherState.get('apiKey') || import.meta.env.VITE_OWM_KEY || DEFAULT_API_KEY || '';
   if (!key) throw new Error('NO_API_KEY');
   return key;
 }

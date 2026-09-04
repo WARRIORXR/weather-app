@@ -5,7 +5,7 @@
 const STORAGE_KEY = 'weather_app_state';
 
 const defaults = {
-  apiKey: '',
+  apiKey: '5c3c7c58b6dc8324e7b441340225ac01',
   unit: 'celsius',          // celsius | fahrenheit
   windUnit: 'kmh',          // kmh | mph | ms
   pressureUnit: 'hpa',      // hpa | inhg
