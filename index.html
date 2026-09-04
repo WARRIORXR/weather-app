@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Weather App - Get real-time weather conditions, 5-day forecasts, hourly forecasts, air quality index, and more for any city worldwide." />
+    <meta name="keywords" content="weather, forecast, temperature, humidity, wind, air quality, weather app" />
+    <meta name="author" content="Weather App" />
+    <meta property="og:title" content="Weather App - Live Weather Forecasts" />
+    <meta property="og:description" content="Beautiful real-time weather app with 5-day forecasts, hourly charts, and detailed weather insights." />
+    <meta name="theme-color" content="#0F172A" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <title>Weather App - Live Weather Forecasts</title>
+  </head>
+  <body>
+    <div id="app">
+      <!-- Alert Banner -->
+      <div id="alert-banner" class="alert-banner hidden"></div>
+
+      <!-- Main App -->
+      <main class="app-container">
+        <!-- Background Particles -->
+        <div id="particles-container" class="particles-container"></div>
+
+        <!-- Header -->
+        <header class="app-header">
+          <div class="header-left">
+            <div class="logo">
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-label="Weather App Logo">
+                <circle cx="16" cy="12" r="6" fill="#F59E0B" />
+                <path d="M8 22c0-4.418 3.582-8 8-8s8 3.582 8 8" stroke="#93C5FD" stroke-width="3" stroke-linecap="round" fill="none" />
+              </svg>
+              <span class="logo-text">WeatherApp</span>
+            </div>
+          </div>
+          <div class="header-right">
+            <button id="settings-btn" class="icon-btn" aria-label="Settings">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+            </button>
+          </div>
+        </header>
+
+        <!-- Search Bar -->
+        <section class="search-section" aria-label="City Search">
+          <div id="search-bar" class="search-bar-container"></div>
+        </section>
+
+        <!-- Main Content Grid -->
+        <div class="content-grid">
+          <!-- Left: Current Weather + Hourly -->
+          <div class="main-column">
+            <!-- Empty / Loading State -->
+            <div id="empty-state" class="empty-state">
+              <div class="empty-icon">
+                <svg width="80" height="80" viewBox="0 0 80 80" fill="none" aria-label="Search illustration">
+                  <circle cx="35" cy="35" r="22" stroke="rgba(255,255,255,0.3)" stroke-width="4"/>
+                  <line x1="51" y1="51" x2="68" y2="68" stroke="rgba(255,255,255,0.3)" stroke-width="4" stroke-linecap="round"/>
+                </svg>
+              </div>
+              <h2>Search for a City</h2>
+              <p>Enter a city name above to get live weather data, forecasts, and more.</p>
+              <div class="trending-cities">
+                <span class="trending-label">Popular:</span>
+                <button class="trending-city" data-city="London">🇬🇧 London</button>
+                <button class="trending-city" data-city="New York">🇺🇸 New York</button>
+                <button class="trending-city" data-city="Tokyo">🇯🇵 Tokyo</button>
+                <button class="trending-city" data-city="Mumbai">🇮🇳 Mumbai</button>
+                <button class="trending-city" data-city="Paris">🇫🇷 Paris</button>
+              </div>
+            </div>
+
+            <!-- Current Weather Card -->
+            <div id="current-weather" class="hidden"></div>
+
+            <!-- Hourly Forecast -->
+            <div id="hourly-forecast" class="hidden"></div>
+
+            <!-- 5-Day Forecast -->
+            <div id="forecast-section" class="hidden"></div>
+          </div>
+
+          <!-- Right: Details Panel + Saved Locations -->
+          <aside class="side-column">
+            <div id="weather-details" class="hidden"></div>
+            <div id="saved-locations"></div>
+          </aside>
+        </div>
+      </main>
+
+      <!-- Settings Modal -->
+      <div id="settings-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-label="Settings">
+        <div id="settings-content"></div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

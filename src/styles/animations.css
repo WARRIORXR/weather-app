@@ -1,0 +1,172 @@
+/* ===========================
+   KEYFRAME ANIMATIONS
+   =========================== */
+
+/* Background gradient transition */
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Shimmer for skeletons */
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+
+/* Fade in + scale */
+@keyframes fadeInScale {
+  from { opacity: 0; transform: scale(0.93) translateY(12px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Slide down */
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Slide up */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Bounce alert */
+@keyframes bounceIn {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  60%  { transform: translateY(8px); opacity: 1; }
+  80%  { transform: translateY(-4px); }
+  100% { transform: translateY(0); }
+}
+
+/* Pulse */
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%       { transform: scale(1.08); opacity: 0.8; }
+}
+
+/* Spin */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Sun rays rotation */
+@keyframes sunRotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Sun glow pulse */
+@keyframes sunGlow {
+  0%, 100% { filter: drop-shadow(0 0 8px rgba(251,191,36,0.6)); }
+  50%       { filter: drop-shadow(0 0 20px rgba(251,191,36,1)); }
+}
+
+/* Cloud float */
+@keyframes cloudFloat {
+  0%, 100% { transform: translateX(0px); }
+  50%       { transform: translateX(12px); }
+}
+
+/* Rain drop fall */
+@keyframes rainFall {
+  0%   { transform: translateY(-20px); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateY(80px); opacity: 0; }
+}
+
+/* Snowflake fall */
+@keyframes snowFall {
+  0%   { transform: translateY(-20px) rotate(0deg) translateX(0); opacity: 0; }
+  10%  { opacity: 1; }
+  50%  { transform: translateY(40px) rotate(180deg) translateX(8px); }
+  90%  { opacity: 1; }
+  100% { transform: translateY(90px) rotate(360deg) translateX(-6px); opacity: 0; }
+}
+
+/* Lightning flash */
+@keyframes lightning {
+  0%, 90%, 100% { opacity: 0; }
+  91%, 93%      { opacity: 1; }
+  92%            { opacity: 0.3; }
+}
+
+/* Stars twinkle */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.2; transform: scale(0.8); }
+  50%       { opacity: 1; transform: scale(1.2); }
+}
+
+/* Shooting star */
+@keyframes shootingStar {
+  0%   { transform: translateX(0) translateY(0); opacity: 1; }
+  100% { transform: translateX(200px) translateY(100px); opacity: 0; }
+}
+
+/* Moon float */
+@keyframes moonFloat {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}
+
+/* Progress bar fill */
+@keyframes progressFill {
+  from { width: 0%; }
+  to   { width: var(--target-width, 70%); }
+}
+
+/* Particle float (background) */
+@keyframes particleFloat {
+  0%   { transform: translateY(0) rotate(0deg); opacity: 0; }
+  10%  { opacity: 0.6; }
+  90%  { opacity: 0.3; }
+  100% { transform: translateY(-100vh) rotate(720deg); opacity: 0; }
+}
+
+/* Lift on hover */
+@keyframes liftCard {
+  from { transform: translateY(0) scale(1); box-shadow: var(--glass-shadow); }
+  to   { transform: translateY(-8px) scale(1.02); box-shadow: 0 20px 50px rgba(0,0,0,0.45); }
+}
+
+/* Fade in */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Ripple for GPS button */
+@keyframes ripple {
+  0%   { box-shadow: 0 0 0 0 rgba(59,130,246,0.6); }
+  70%  { box-shadow: 0 0 0 14px rgba(59,130,246,0); }
+  100% { box-shadow: 0 0 0 0 rgba(59,130,246,0); }
+}
+
+/* Shake for thunder */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+
+/* Dot pulsing for loading */
+@keyframes dotPulse {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40%           { transform: scale(1); opacity: 1; }
+}
+
+/* Compass needle */
+@keyframes needleRotate {
+  0%   { transform: rotate(-5deg); }
+  100% { transform: rotate(5deg); }
+}
+
+/* Sun arc for sunrise/sunset */
+@keyframes arcMove {
+  0%   { stroke-dashoffset: 280; }
+  100% { stroke-dashoffset: 0; }
+}

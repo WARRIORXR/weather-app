@@ -1,0 +1,19 @@
+{
+  "name": "weather-app",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "chart.js": "^4.4.3",
+    "dayjs": "^1.11.11"
+  },
+  "devDependencies": {
+    "vite": "^8.2.2"
+  }
+}
