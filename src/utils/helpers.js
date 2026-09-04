@@ -1,5 +1,12 @@
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc.js';
 import { WIND_DIRECTIONS, WEATHER_CONDITION_MAP, AQI_LEVELS } from './constants.js';
+
+try {
+  dayjs.extend(utc);
+} catch (e) {
+  console.warn('Dayjs UTC extension error:', e);
+}
 
 // ---- Temperature conversion ----
 export function celsiusToFahrenheit(c) { return Math.round((c * 9/5) + 32); }
@@ -12,18 +19,52 @@ export function formatTemp(celsius, unit) {
 
 // ---- Date/Time ----
 export function formatDateTime(timestamp, timezone = 0) {
-  // timestamp in seconds, timezone offset in seconds
-  const d = dayjs((timestamp + timezone) * 1000).utc();
-  return d.format('ddd, D MMM YYYY · HH:mm');
+  try {
+    if (dayjs.prototype.utc) {
+      return dayjs((timestamp + timezone) * 1000).utc().format('ddd, D MMM YYYY · HH:mm');
+    }
+  } catch {}
+  const d = new Date((timestamp + timezone) * 1000);
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const dayName = days[d.getUTCDay()];
+  const date = d.getUTCDate();
+  const monthName = months[d.getUTCMonth()];
+  const year = d.getUTCFullYear();
+  const hours = String(d.getUTCHours()).padStart(2, '0');
+  const minutes = String(d.getUTCMinutes()).padStart(2, '0');
+  return `${dayName}, ${date} ${monthName} ${year} · ${hours}:${minutes}`;
 }
 export function formatTime(timestamp, timezone = 0) {
-  return dayjs((timestamp + timezone) * 1000).utc().format('HH:mm');
+  try {
+    if (dayjs.prototype.utc) {
+      return dayjs((timestamp + timezone) * 1000).utc().format('HH:mm');
+    }
+  } catch {}
+  const d = new Date((timestamp + timezone) * 1000);
+  const hours = String(d.getUTCHours()).padStart(2, '0');
+  const minutes = String(d.getUTCMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
 }
 export function formatDay(timestamp, timezone = 0) {
-  return dayjs((timestamp + timezone) * 1000).utc().format('dddd');
+  try {
+    if (dayjs.prototype.utc) {
+      return dayjs((timestamp + timezone) * 1000).utc().format('dddd');
+    }
+  } catch {}
+  const d = new Date((timestamp + timezone) * 1000);
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  return days[d.getUTCDay()];
 }
 export function formatShortDate(timestamp, timezone = 0) {
-  return dayjs((timestamp + timezone) * 1000).utc().format('MMM D');
+  try {
+    if (dayjs.prototype.utc) {
+      return dayjs((timestamp + timezone) * 1000).utc().format('MMM D');
+    }
+  } catch {}
+  const d = new Date((timestamp + timezone) * 1000);
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${months[d.getUTCMonth()]} ${d.getUTCDate()}`;
 }
 export function isDay(timestamp, sunrise, sunset) {
   return timestamp >= sunrise && timestamp < sunset;
@@ -103,18 +144,26 @@ export function getIconUrl(icon, size = '2x') {
 
 // ---- Percentage of day elapsed (for sun arc) ----
 export function sunArcProgress(current, sunrise, sunset) {
+  if (!sunrise || !sunset || sunset <= sunrise) return 0.5;
   const range = sunset - sunrise;
   const elapsed = current - sunrise;
-  return clamp(elapsed / range, 0, 1);
+  const val = elapsed / range;
+  return isNaN(val) ? 0.5 : clamp(val, 0, 1);
 }
 
 // ---- Format "last updated" ----
 export function formatLastUpdated(timestamp) {
-  return `Updated at ${dayjs(timestamp * 1000).format('HH:mm')}`;
+  try {
+    return `Updated at ${dayjs(timestamp * 1000).format('HH:mm')}`;
+  } catch {
+    const d = new Date(timestamp * 1000);
+    return `Updated at ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  }
 }
 
 // ---- Get moon phase label ----
 export function getMoonPhase(phase) {
+  if (typeof phase !== 'number' || isNaN(phase)) return '🌕 Full Moon';
   if (phase < 0.03 || phase > 0.97) return '🌑 New Moon';
   if (phase < 0.22) return '🌒 Waxing Crescent';
   if (phase < 0.28) return '🌓 First Quarter';

@@ -94,10 +94,16 @@ export default class HourlyForecast {
           data: temps,
           borderColor: 'rgba(147,197,253,1)',
           backgroundColor: (ctx) => {
-            const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 160);
-            gradient.addColorStop(0, 'rgba(59,130,246,0.35)');
-            gradient.addColorStop(1, 'rgba(59,130,246,0)');
-            return gradient;
+            try {
+              const canvasCtx = ctx.chart?.ctx;
+              if (!canvasCtx) return 'rgba(59,130,246,0.2)';
+              const gradient = canvasCtx.createLinearGradient(0, 0, 0, 160);
+              gradient.addColorStop(0, 'rgba(59,130,246,0.35)');
+              gradient.addColorStop(1, 'rgba(59,130,246,0)');
+              return gradient;
+            } catch {
+              return 'rgba(59,130,246,0.2)';
+            }
           },
           borderWidth: 3,
           pointBackgroundColor: '#fff',

@@ -3,7 +3,7 @@
 // ===========================
 
 export const API_BASE = 'https://api.openweathermap.org';
-export const GEO_BASE = 'http://api.openweathermap.org';
+export const GEO_BASE = 'https://api.openweathermap.org';
 
 export const WEATHER_CONDITION_MAP = {
   // Thunderstorm 2xx
