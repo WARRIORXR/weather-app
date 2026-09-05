@@ -8,11 +8,12 @@ import WeatherDetails from './components/WeatherDetails.js';
 import SavedLocations from './components/SavedLocations.js';
 import SettingsModal from './components/SettingsModal.js';
 import AlertBanner from './components/AlertBanner.js';
+import Toast from './components/Toast.js';
 
 import {
-  fetchCurrentWeather, fetchCurrentWeatherByCoords,
-  fetchForecast, fetchForecastByCoords,
-  fetchAirQuality, parseForecastToDays, parseHourly
+  getCompleteWeather,
+  parseForecastToDays,
+  parseHourly
 } from './utils/api.js';
 import { isDay, getBackgroundKey } from './utils/helpers.js';
 import { BACKGROUND_GRADIENTS } from './utils/constants.js';
@@ -22,6 +23,8 @@ export default class App {
   constructor() {
     this.components = {};
     this.currentData = null;
+    this.currentForecast = null;
+    this.currentAqi = null;
     this._loading = false;
   }
 
@@ -31,6 +34,7 @@ export default class App {
     this._applyTheme();
     this._initParticles();
     this._restoreLastCity();
+    this._schedulePrefetchIdle();
   }
 
   _setupElements() {
@@ -65,7 +69,8 @@ export default class App {
     this.components.current = new CurrentWeather(
       this.els.currentWeather,
       (data) => this._saveCity(data),
-      (unit) => this._toggleUnit(unit)
+      (unit) => this._toggleUnit(unit),
+      () => this._refreshCurrentWeather()
     );
 
     // Forecast
@@ -102,75 +107,97 @@ export default class App {
       this.components.settings.open();
     });
 
-    // Trending cities
+    // Trending cities quick links
     this.els.trendings?.forEach(btn => {
       btn.addEventListener('click', () => {
-        this._loadWeather(btn.dataset.city);
-        this.components.search.setValue(btn.dataset.city);
+        const city = btn.dataset.city;
+        this.components.search.setValue(city);
+        this._loadWeather(city);
       });
     });
   }
 
-  async _loadWeather(city, lat, lon) {
+  async _loadWeather(city, lat, lon, forceFresh = false) {
     if (this._loading) return;
-    const apiKey = WeatherState.get('apiKey');
-    if (!apiKey) {
-      this._showApiKeyPrompt();
-      return;
-    }
 
-    this._loading = true;
-    this._showLoading();
+    const targetCity = city || WeatherState.get('lastCity') || 'London';
+    const hasActiveView = !!this.currentData;
 
     try {
-      let current, forecast;
+      const weatherReq = await getCompleteWeather(targetCity, lat, lon);
 
-      if (lat !== undefined && lon !== undefined) {
-        [current, forecast] = await Promise.all([
-          fetchCurrentWeatherByCoords(lat, lon),
-          fetchForecastByCoords(lat, lon),
-        ]);
-      } else {
-        [current, forecast] = await Promise.all([
-          fetchCurrentWeather(city),
-          fetchForecast(city),
-        ]);
+      // SWR: If cached data exists and not forcing fresh, render instantly (0ms)
+      if (weatherReq.cached && !forceFresh) {
+        WeatherState.set({
+          lastCity: weatherReq.cached.current.name,
+          lastWeather: weatherReq.cached.current,
+          dataSource: 'cached'
+        });
+        this._renderAll(weatherReq.cached.current, weatherReq.cached.forecast, weatherReq.cached.aqi);
+
+        // Fetch fresh data in the background silently
+        weatherReq.fetchFresh().then(fresh => {
+          if (fresh && fresh.current) {
+            WeatherState.set({
+              lastCity: fresh.current.name,
+              lastWeather: fresh.current,
+              dataSource: fresh.isLive ? 'live' : 'simulation'
+            });
+            this._renderAll(fresh.current, fresh.forecast, fresh.aqi);
+          }
+        }).catch(() => {});
+        return;
       }
 
-      this.currentData = current;
-      WeatherState.set({ lastCity: current.name, lastWeather: current });
+      // If no cache exists, show inline skeletons
+      this._loading = true;
+      if (!hasActiveView) {
+        this._showInlineSkeletons();
+      }
 
-      // Air quality (non-blocking)
-      let aqiData = null;
-      try {
-        aqiData = await fetchAirQuality(current.coord.lat, current.coord.lon);
-      } catch { /* optional */ }
+      const fresh = await weatherReq.fetchFresh();
 
-      this._hideLoading();
-      this._renderAll(current, forecast, aqiData);
+      WeatherState.set({
+        lastCity: fresh.current.name,
+        lastWeather: fresh.current,
+        dataSource: fresh.isLive ? 'live' : 'simulation'
+      });
 
-      // Prefetch saved locations weather
+      this._renderAll(fresh.current, fresh.forecast, fresh.aqi);
+
+      // Prefetch saved locations in background
       this._prefetchSavedLocations();
 
     } catch (err) {
-      this._hideLoading();
-      this._showError(err);
+      console.error('Weather load error:', err);
+      Toast.error('Could not load fresh weather. Displaying cached overview.');
     } finally {
       this._loading = false;
     }
   }
 
+  _refreshCurrentWeather() {
+    if (this.currentData) {
+      Toast.info(`Refreshing ${this.currentData.name}...`, 1500);
+      this._loadWeather(this.currentData.name, undefined, undefined, true);
+    }
+  }
+
   _renderAll(current, forecast, aqiData) {
+    this.currentData = current;
+    this.currentForecast = forecast;
+    this.currentAqi = aqiData;
+
     const tz = current.timezone || 0;
-    const dayNight = isDay(current.dt, current.sys.sunrise, current.sys.sunset);
+    const dayNight = isDay(current.dt, current.sys?.sunrise, current.sys?.sunset);
     const bgKey = getBackgroundKey(current.weather[0].id, dayNight);
     const grad = BACKGROUND_GRADIENTS[bgKey] || BACKGROUND_GRADIENTS['clear_day'];
 
-    // Update background
+    // Update dynamic atmospheric background
     document.body.style.setProperty('--bg-start', grad.start);
     document.body.style.setProperty('--bg-end', grad.end);
 
-    // Show sections, hide empty
+    // Reveal UI sections
     this.els.emptyState.classList.add('hidden');
     this.els.currentWeather.classList.remove('hidden');
     this.els.hourly.classList.remove('hidden');
@@ -179,15 +206,31 @@ export default class App {
 
     // Render components
     this.components.current.render(current);
-    this.components.forecast.render(parseForecastToDays(forecast), tz);
+    this.components.forecast.render(parseForecastToDays(forecast), tz, current.main.temp);
     this.components.hourly.render(parseHourly(forecast), tz);
     this.components.details.render(current, aqiData);
 
-    // Update saved locations UI
-    this.components.saved.update();
+    // Update saved locations cache
+    this.components.saved.setWeatherData(current.name, current.sys?.country, current);
 
-    // Particles update
+    // Subtle particles update
     this._updateParticles(current.weather[0].id, dayNight);
+  }
+
+  _showInlineSkeletons() {
+    this.els.emptyState.classList.add('hidden');
+    this.els.currentWeather.classList.remove('hidden');
+    this.els.currentWeather.innerHTML = `
+      <div class="glass current-weather-card skeleton-card">
+        <div class="skeleton" style="width: 200px; height: 28px; margin-bottom: 12px;"></div>
+        <div class="skeleton" style="width: 140px; height: 16px; margin-bottom: 24px;"></div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+          <div class="skeleton" style="width: 160px; height: 72px;"></div>
+          <div class="skeleton" style="width: 100px; height: 100px; border-radius: 50%;"></div>
+        </div>
+        <div class="skeleton" style="width: 100%; height: 80px;"></div>
+      </div>
+    `;
   }
 
   _refreshCurrentDisplay() {
@@ -198,40 +241,45 @@ export default class App {
   _saveCity(data) {
     WeatherState.addSavedLocation({
       city: data.name,
-      country: data.sys.country,
-      lat: data.coord.lat,
-      lon: data.coord.lon,
+      country: data.sys?.country,
+      lat: data.coord?.lat,
+      lon: data.coord?.lon,
     });
-    this.components.current.render(data); // refresh star state
-    this.components.saved.setWeatherData(data.name, data.sys.country, data);
+    this.components.current.render(data);
+    this.components.saved.setWeatherData(data.name, data.sys?.country, data);
+    Toast.success(`Added ${data.name} to saved locations!`);
   }
 
   _toggleUnit(unit) {
     WeatherState.set({ unit });
     if (this.currentData) this.components.current.render(this.currentData);
-    if (this.components.hourly.hourlyData) {
-      this.components.hourly.render(this.components.hourly.hourlyData, this.components.hourly.timezone);
+    if (this.currentForecast) {
+      const tz = this.currentData ? this.currentData.timezone : 0;
+      this.components.forecast.render(parseForecastToDays(this.currentForecast), tz, this.currentData?.main?.temp);
+      this.components.hourly.render(parseHourly(this.currentForecast), tz);
     }
-    if (this.components.forecast.days) {
-      this.components.forecast.render(this.components.forecast.days, this.components.forecast.timezone);
+    if (this.currentData && this.currentAqi) {
+      this.components.details.render(this.currentData, this.currentAqi);
     }
     this.components.saved.update();
   }
 
   async _useGps() {
     if (!navigator.geolocation) {
-      alert('Geolocation is not supported by your browser.');
+      Toast.error('Geolocation is not supported by your browser.');
       return;
     }
-    this._showLoading();
+
+    Toast.info('Detecting your current location...', 2000);
+
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude: lat, longitude: lon } = pos.coords;
+        Toast.success('Location detected! Loading weather...', 1500);
         await this._loadWeather(null, lat, lon);
       },
       (err) => {
-        this._hideLoading();
-        alert('Could not get your location. Please search manually.');
+        Toast.warning('Could not access GPS. Please search for your city manually.');
       },
       { timeout: 8000 }
     );
@@ -241,9 +289,28 @@ export default class App {
     const locs = WeatherState.get('savedLocations') || [];
     for (const loc of locs) {
       try {
-        const data = await fetchCurrentWeather(loc.city);
+        const req = await getCompleteWeather(loc.city);
+        const data = req.cached?.current || (await req.fetchFresh()).current;
         this.components.saved.setWeatherData(loc.city, loc.country, data);
-      } catch { /* ignore */ }
+      } catch { /* non-critical */ }
+    }
+  }
+
+  _schedulePrefetchIdle() {
+    // Use requestIdleCallback or setTimeout to prefetch popular cities in background
+    const popular = ['London', 'New York', 'Tokyo', 'Paris', 'Mumbai'];
+    const prefetch = async () => {
+      for (const city of popular) {
+        try {
+          await getCompleteWeather(city);
+        } catch {}
+      }
+    };
+
+    if ('requestIdleCallback' in window) {
+      window.requestIdleCallback(prefetch);
+    } else {
+      setTimeout(prefetch, 2500);
     }
   }
 
@@ -260,7 +327,6 @@ export default class App {
     const animations = WeatherState.get('animationsEnabled');
     document.body.style.animationPlayState = animations ? 'running' : 'paused';
 
-    // Color scheme
     const idx = WeatherState.get('colorScheme') || 0;
     const schemes = [
       { start: '#1E3A8A', end: '#3730A3' },
@@ -298,7 +364,6 @@ export default class App {
   }
 
   _updateParticles(conditionId, isDay) {
-    // Could be enhanced per condition - for now just re-init
     this._initParticles();
   }
 
@@ -306,72 +371,5 @@ export default class App {
     const city = WeatherState.get('lastCity') || 'London';
     this.components.search.setValue(city);
     this._loadWeather(city);
-  }
-
-  _showLoading() {
-    if (document.getElementById('loading-overlay')) return;
-    const div = document.createElement('div');
-    div.className = 'loading-overlay';
-    div.id = 'loading-overlay';
-    div.setAttribute('role', 'status');
-    div.setAttribute('aria-live', 'polite');
-    div.setAttribute('aria-label', 'Loading weather data');
-    div.innerHTML = `
-      <svg class="loading-spinner" viewBox="0 0 50 50" aria-hidden="true">
-        <circle cx="25" cy="25" r="20" fill="none" stroke="#3B82F6" stroke-width="4"
-          stroke-dasharray="120 40" stroke-linecap="round"/>
-      </svg>
-      <div class="loading-text">Fetching weather data</div>
-      <div class="loading-dots" aria-hidden="true">
-        <div class="loading-dot"></div>
-        <div class="loading-dot"></div>
-        <div class="loading-dot"></div>
-      </div>
-    `;
-    document.body.appendChild(div);
-  }
-
-  _hideLoading() {
-    document.getElementById('loading-overlay')?.remove();
-  }
-
-  _showError(err) {
-    console.error('Weather load error:', err);
-    let msg = 'Connection error. Please check your internet connection.';
-    if (err.message === 'NO_API_KEY') {
-      msg = 'Please add your OpenWeatherMap API key in Settings (⚙️).';
-    } else if (err.response?.status === 404) {
-      msg = 'City not found. Please check the spelling and try again.';
-    } else if (err.response?.status === 401) {
-      msg = 'Invalid API key. Please check your OpenWeatherMap API key in Settings (⚙️).';
-    } else if (err.message && err.message !== 'Network Error') {
-      msg = `Error: ${err.message}`;
-    }
-
-    this.els.emptyState.classList.remove('hidden');
-    this.els.emptyState.innerHTML = `
-      <div class="error-state">
-        <svg width="72" height="72" viewBox="0 0 72 72" fill="none" aria-hidden="true">
-          <circle cx="36" cy="36" r="32" stroke="rgba(239,68,68,0.3)" stroke-width="3"/>
-          <path d="M36 24v16M36 44v4" stroke="#EF4444" stroke-width="3" stroke-linecap="round"/>
-        </svg>
-        <h3>Oops! Something went wrong</h3>
-        <p>${msg}</p>
-        ${err.message !== 'NO_API_KEY' ? `<button class="retry-btn" id="retry-btn">Try Again</button>` : ''}
-        <button class="retry-btn" id="open-settings-btn" style="background:var(--secondary)">Open Settings ⚙️</button>
-      </div>
-    `;
-
-    this.els.emptyState.querySelector('#retry-btn')?.addEventListener('click', () => {
-      const city = WeatherState.get('lastCity') || 'London';
-      if (city) this._loadWeather(city);
-    });
-    this.els.emptyState.querySelector('#open-settings-btn')?.addEventListener('click', () => {
-      this.components.settings.open();
-    });
-  }
-
-  _showApiKeyPrompt() {
-    this.components.settings.open();
   }
 }

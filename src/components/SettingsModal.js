@@ -1,5 +1,6 @@
 import WeatherState from '../context/WeatherState.js';
 import { DEFAULT_API_KEY } from '../utils/constants.js';
+import Toast from './Toast.js';
 
 const COLOR_SCHEMES = [
   { label: 'Ocean Blue', start: '#1E3A8A', end: '#3730A3' },
@@ -223,7 +224,8 @@ export default class SettingsModal {
     // Clear cache
     this.contentEl.querySelector('#clear-cache-btn')?.addEventListener('click', () => {
       localStorage.clear();
-      alert('Cache cleared!');
+      WeatherState.clearCache();
+      Toast.success('Cache and stored history cleared!');
     });
 
     // Save
