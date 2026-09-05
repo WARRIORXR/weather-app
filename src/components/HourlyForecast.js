@@ -1,5 +1,5 @@
 import { Chart, registerables } from 'chart.js';
-import { formatTemp, formatTime, formatPop, formatWindSpeed } from '../utils/helpers.js';
+import { formatTemp, formatTime, formatPop, formatWindSpeed, mpsToKmh, kmhToMph } from '../utils/helpers.js';
 import { getWeatherIconSvg } from '../utils/weatherIcons.js';
 import WeatherState from '../context/WeatherState.js';
 
@@ -9,108 +9,177 @@ export default class HourlyForecast {
   constructor(container) {
     this.container = container;
     this.chart = null;
-    this.isOpen = false;
+    this.activeTab = 'temp'; // temp | pop | wind
+    this.hourlyData = [];
+    this.timezone = 0;
   }
 
   render(hourlyData, timezone = 0) {
-    this.hourlyData = hourlyData;
+    this.hourlyData = hourlyData || [];
     this.timezone = timezone;
     const unit = WeatherState.get('unit');
+    const windUnit = WeatherState.get('windUnit') || 'kmh';
 
     this.container.className = '';
     this.container.innerHTML = `
-      <div class="hourly-section animate-slideUp">
-        <button class="hourly-toggle-btn" id="hourly-toggle" aria-expanded="${this.isOpen}" aria-controls="hourly-body">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          Hourly Forecast
-          <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-
-        <div class="glass hourly-chart-container ${this.isOpen ? 'open' : ''}" id="hourly-body">
-          <!-- Icons row -->
-          <div style="display:flex;justify-content:space-around;margin-bottom:8px;overflow-x:auto;gap:8px;">
-            ${hourlyData.map(h => `
-              <div style="flex-shrink:0;text-align:center;min-width:60px">
-                <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">${formatTime(h.dt, timezone)}</div>
-                <div aria-hidden="true">${getWeatherIconSvg(h.icon, 48)}</div>
-                <div style="font-size:10px;color:#60A5FA;margin-top:4px">${formatPop(h.pop)}</div>
-              </div>
-            `).join('')}
+      <div class="glass hourly-forecast-card animate-slideUp">
+        <div class="hf-header">
+          <div class="hf-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+            <span>Hourly Forecast</span>
           </div>
 
-          <!-- Chart -->
-          <div class="hourly-chart" style="position:relative;height:160px">
-            <canvas id="hourly-chart-canvas" aria-label="Hourly temperature chart" role="img"></canvas>
+          <!-- Tab Switcher -->
+          <div class="hf-tabs" role="tablist" aria-label="Forecast Metric">
+            <button class="hf-tab ${this.activeTab === 'temp' ? 'active' : ''}" data-tab="temp" role="tab" aria-selected="${this.activeTab === 'temp'}">
+              Temp
+            </button>
+            <button class="hf-tab ${this.activeTab === 'pop' ? 'active' : ''}" data-tab="pop" role="tab" aria-selected="${this.activeTab === 'pop'}">
+              Rain %
+            </button>
+            <button class="hf-tab ${this.activeTab === 'wind' ? 'active' : ''}" data-tab="wind" role="tab" aria-selected="${this.activeTab === 'wind'}">
+              Wind
+            </button>
           </div>
+        </div>
 
-          <!-- Wind row -->
-          <div style="display:flex;justify-content:space-around;margin-top:8px;overflow-x:auto;gap:8px;">
-            ${hourlyData.map(h => `
-              <div style="flex-shrink:0;text-align:center;min-width:60px;font-size:11px;color:var(--text-muted)">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin:0 auto 2px"><path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/></svg>
-                ${formatWindSpeed(h.wind, WeatherState.get('windUnit') || 'kmh')}
-              </div>
-            `).join('')}
+        <!-- Scrollable Hourly Timeline Cards -->
+        <div class="hf-timeline-wrap" role="region" aria-label="Hourly weather timeline">
+          <div class="hf-timeline">
+            ${this.hourlyData.map((h, i) => {
+              const isNow = i === 0;
+              let metricDisplay = '';
+              if (this.activeTab === 'temp') {
+                metricDisplay = `<span class="hf-card-val temp">${formatTemp(h.temp, unit)}</span>`;
+              } else if (this.activeTab === 'pop') {
+                metricDisplay = `<span class="hf-card-val pop">💧 ${formatPop(h.pop)}</span>`;
+              } else {
+                metricDisplay = `<span class="hf-card-val wind">💨 ${formatWindSpeed(h.wind, windUnit)}</span>`;
+              }
+
+              return `
+                <div class="hf-card ${isNow ? 'active' : ''}" tabindex="0"
+                  aria-label="${isNow ? 'Now' : formatTime(h.dt, timezone)}: ${formatTemp(h.temp, unit)}, ${h.description}">
+                  <span class="hf-card-time">${isNow ? 'Now' : formatTime(h.dt, timezone)}</span>
+                  <div class="hf-card-icon" aria-hidden="true">
+                    ${getWeatherIconSvg(h.icon, 44)}
+                  </div>
+                  ${metricDisplay}
+                  <span class="hf-card-pop-sub">${formatPop(h.pop)}</span>
+                </div>
+              `;
+            }).join('')}
           </div>
+        </div>
+
+        <!-- Interactive Chart -->
+        <div class="hf-chart-wrap">
+          <canvas id="hourly-chart-canvas" aria-label="Hourly weather visual graph" role="img"></canvas>
         </div>
       </div>
     `;
 
-    this._bindToggle();
-    if (this.isOpen) this._renderChart(hourlyData, timezone, unit);
+    this._bindEvents();
+    this._renderChart();
   }
 
-  _bindToggle() {
-    const btn = this.container.querySelector('#hourly-toggle');
-    const body = this.container.querySelector('#hourly-body');
-    btn?.addEventListener('click', () => {
-      this.isOpen = !this.isOpen;
-      btn.classList.toggle('expanded', this.isOpen);
-      body.classList.toggle('open', this.isOpen);
-      btn.setAttribute('aria-expanded', this.isOpen);
-      if (this.isOpen && !this.chart) {
-        this._renderChart(this.hourlyData, this.timezone, WeatherState.get('unit'));
-      }
+  _bindEvents() {
+    this.container.querySelectorAll('.hf-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tab = btn.dataset.tab;
+        if (this.activeTab === tab) return;
+        this.activeTab = tab;
+        this.container.querySelectorAll('.hf-tab').forEach(b => {
+          const isAct = b.dataset.tab === tab;
+          b.classList.toggle('active', isAct);
+          b.setAttribute('aria-selected', isAct);
+        });
+
+        // Re-render timeline card values & chart
+        this.render(this.hourlyData, this.timezone);
+      });
     });
   }
 
-  _renderChart(hourlyData, timezone, unit) {
+  _renderChart() {
     const canvas = this.container.querySelector('#hourly-chart-canvas');
-    if (!canvas) return;
+    if (!canvas || !this.hourlyData.length) return;
 
-    if (this.chart) { this.chart.destroy(); this.chart = null; }
+    if (this.chart) {
+      this.chart.destroy();
+      this.chart = null;
+    }
 
-    const labels = hourlyData.map(h => formatTime(h.dt, timezone));
-    const temps = hourlyData.map(h => Math.round(
-      unit === 'fahrenheit' ? (h.temp * 9/5 + 32) : h.temp
-    ));
+    const unit = WeatherState.get('unit');
+    const windUnit = WeatherState.get('windUnit') || 'kmh';
+    const labels = this.hourlyData.map((h, i) => i === 0 ? 'Now' : formatTime(h.dt, this.timezone));
+
+    let datasetLabel = '';
+    let datasetValues = [];
+    let strokeColor = '#38BDF8';
+    let gradientStart = 'rgba(56, 189, 248, 0.35)';
+    let gradientEnd = 'rgba(56, 189, 248, 0.0)';
+    let pointColor = '#38BDF8';
+    let valueSuffix = '';
+
+    if (this.activeTab === 'temp') {
+      datasetLabel = `Temperature (°${unit === 'fahrenheit' ? 'F' : 'C'})`;
+      datasetValues = this.hourlyData.map(h => Math.round(unit === 'fahrenheit' ? (h.temp * 9/5 + 32) : h.temp));
+      strokeColor = '#F59E0B';
+      gradientStart = 'rgba(245, 158, 11, 0.35)';
+      gradientEnd = 'rgba(245, 158, 11, 0.0)';
+      pointColor = '#F59E0B';
+      valueSuffix = '°';
+    } else if (this.activeTab === 'pop') {
+      datasetLabel = 'Precipitation Chance (%)';
+      datasetValues = this.hourlyData.map(h => Math.round((h.pop || 0) * 100));
+      strokeColor = '#60A5FA';
+      gradientStart = 'rgba(96, 165, 250, 0.45)';
+      gradientEnd = 'rgba(96, 165, 250, 0.0)';
+      pointColor = '#60A5FA';
+      valueSuffix = '%';
+    } else {
+      datasetLabel = `Wind Speed (${windUnit})`;
+      datasetValues = this.hourlyData.map(h => {
+        const kmh = mpsToKmh(h.wind);
+        if (windUnit === 'mph') return kmhToMph(kmh);
+        if (windUnit === 'ms') return Math.round(h.wind);
+        return kmh;
+      });
+      strokeColor = '#A78BFA';
+      gradientStart = 'rgba(167, 139, 250, 0.35)';
+      gradientEnd = 'rgba(167, 139, 250, 0.0)';
+      pointColor = '#A78BFA';
+      valueSuffix = ` ${windUnit}`;
+    }
 
     this.chart = new Chart(canvas, {
       type: 'line',
       data: {
         labels,
         datasets: [{
-          label: `Temperature (°${unit === 'fahrenheit' ? 'F' : 'C'})`,
-          data: temps,
-          borderColor: 'rgba(147,197,253,1)',
+          label: datasetLabel,
+          data: datasetValues,
+          borderColor: strokeColor,
           backgroundColor: (ctx) => {
-            try {
-              const canvasCtx = ctx.chart?.ctx;
-              if (!canvasCtx) return 'rgba(59,130,246,0.2)';
-              const gradient = canvasCtx.createLinearGradient(0, 0, 0, 160);
-              gradient.addColorStop(0, 'rgba(59,130,246,0.35)');
-              gradient.addColorStop(1, 'rgba(59,130,246,0)');
-              return gradient;
-            } catch {
-              return 'rgba(59,130,246,0.2)';
-            }
+            const chartCtx = ctx.chart?.ctx;
+            if (!chartCtx) return gradientStart;
+            const gradient = chartCtx.createLinearGradient(0, 0, 0, 140);
+            gradient.addColorStop(0, gradientStart);
+            gradient.addColorStop(1, gradientEnd);
+            return gradient;
           },
-          borderWidth: 3,
-          pointBackgroundColor: '#fff',
-          pointBorderColor: '#3B82F6',
-          pointRadius: 5,
-          pointHoverRadius: 8,
-          tension: 0.4,
+          borderWidth: 2.8,
+          pointBackgroundColor: '#FFFFFF',
+          pointBorderColor: pointColor,
+          pointBorderWidth: 2.5,
+          pointRadius: 4,
+          pointHoverRadius: 7,
+          pointHoverBackgroundColor: pointColor,
+          pointHoverBorderColor: '#FFFFFF',
+          tension: 0.38,
           fill: true,
         }]
       },
@@ -121,36 +190,32 @@ export default class HourlyForecast {
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: 'rgba(15,23,42,0.95)',
-            borderColor: 'rgba(59,130,246,0.5)',
+            backgroundColor: 'rgba(15, 23, 42, 0.94)',
+            borderColor: strokeColor,
             borderWidth: 1,
-            titleColor: '#fff',
-            bodyColor: '#93C5FD',
-            padding: 12,
+            titleColor: '#FFFFFF',
+            bodyColor: '#E2E8F0',
+            padding: 10,
+            displayColors: false,
             callbacks: {
-              title: (items) => labels[items[0].dataIndex],
-              label: (item) => ` ${item.raw}°${unit === 'fahrenheit' ? 'F' : 'C'}`,
-              afterLabel: (item) => {
-                const h = hourlyData[item.dataIndex];
-                return [
-                  ` 💧 ${formatPop(h.pop)} rain chance`,
-                  ` 💨 ${formatWindSpeed(h.wind, WeatherState.get('windUnit') || 'kmh')}`,
-                ];
-              }
+              title: (items) => `${items[0].label} Forecast`,
+              label: (item) => ` ${item.raw}${valueSuffix}`,
             }
           }
         },
         scales: {
           x: {
-            grid: { color: 'rgba(255,255,255,0.06)' },
-            ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 11 } }
+            grid: { display: false },
+            ticks: {
+              color: 'rgba(255,255,255,0.6)',
+              font: { size: 11, family: 'Inter' }
+            }
           },
           y: {
-            grid: { color: 'rgba(255,255,255,0.06)' },
-            ticks: {
-              color: 'rgba(255,255,255,0.5)', font: { size: 11 },
-              callback: (v) => `${v}°`
-            }
+            display: false,
+            grid: { display: false },
+            suggestedMin: Math.min(...datasetValues) - (this.activeTab === 'pop' ? 10 : 2),
+            suggestedMax: Math.max(...datasetValues) + (this.activeTab === 'pop' ? 10 : 2),
           }
         }
       }
@@ -159,5 +224,10 @@ export default class HourlyForecast {
 
   update(hourlyData, timezone = 0) { this.render(hourlyData, timezone); }
 
-  destroy() { if (this.chart) { this.chart.destroy(); this.chart = null; } }
+  destroy() {
+    if (this.chart) {
+      this.chart.destroy();
+      this.chart = null;
+    }
+  }
 }
