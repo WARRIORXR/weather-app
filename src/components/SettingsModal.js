@@ -1,5 +1,4 @@
 import WeatherState from '../context/WeatherState.js';
-import { DEFAULT_API_KEY } from '../utils/constants.js';
 import Toast from './Toast.js';
 
 const COLOR_SCHEMES = [
@@ -232,7 +231,7 @@ export default class SettingsModal {
     this.contentEl.querySelector('#settings-save')?.addEventListener('click', () => {
       // Gather all values
       const apiKeyInput = this.contentEl.querySelector('#api-key-input')?.value.trim();
-      const apiKey = apiKeyInput || DEFAULT_API_KEY;
+      const apiKey = apiKeyInput || '';
       const animationsEnabled = this.contentEl.querySelector('#toggle-animations')?.checked ?? true;
       const particlesEnabled = this.contentEl.querySelector('#toggle-particles')?.checked ?? true;
       const autoLocation = this.contentEl.querySelector('#toggle-autoloc')?.checked ?? true;

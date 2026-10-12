@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { API_BASE, GEO_BASE, DEFAULT_API_KEY } from './constants.js';
+import { API_BASE, GEO_BASE } from './constants.js';
 import WeatherState from '../context/WeatherState.js';
 
 // Reusable axios client with 6s timeout
@@ -28,7 +28,7 @@ const KNOWN_CITIES = [
 function getKey() {
   const stateKey = WeatherState.get('apiKey');
   const envKey = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env.VITE_OWM_KEY : '';
-  return (stateKey && String(stateKey).trim()) || (envKey && String(envKey).trim()) || DEFAULT_API_KEY || '';
+  return (stateKey && String(stateKey).trim()) || (envKey && String(envKey).trim()) || '';
 }
 
 // Request with single retry

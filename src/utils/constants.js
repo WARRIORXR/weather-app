@@ -59,5 +59,3 @@ export const WIND_DIRECTIONS = [
   'N','NNE','NE','ENE','E','ESE','SE','SSE',
   'S','SSW','SW','WSW','W','WNW','NW','NNW','N'
 ];
-
-export const DEFAULT_API_KEY = 'REDACTED_API_KEY';

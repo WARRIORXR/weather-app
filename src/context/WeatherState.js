@@ -1,11 +1,9 @@
-import { DEFAULT_API_KEY } from '../utils/constants.js';
-
 const STORAGE_KEY = 'weather_app_state';
 const CACHE_STORAGE_KEY = 'weather_app_cache_v2';
 const DEFAULT_TTL_MS = 15 * 60 * 1000; // 15 minutes TTL for weather data
 
 const defaults = {
-  apiKey: DEFAULT_API_KEY,
+  apiKey: '',
   unit: 'celsius',          // celsius | fahrenheit
   windUnit: 'kmh',          // kmh | mph | ms
   pressureUnit: 'hpa',      // hpa | inhg
