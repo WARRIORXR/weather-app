@@ -12,3 +12,13 @@ weather-cli/saved_locations.json
 
 # local notes / redaction scratch files
 replacements.txt
+
+# Secrets & keys — never commit
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.p12
+credentials*.json
+secrets.json
